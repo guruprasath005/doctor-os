@@ -1,20 +1,34 @@
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.models.patient import Patient
 from app.schemas.patient import PatientCreate, PatientOut
 
 
-def register_patient(db: Session, data: PatientCreate) -> dict:
+def register_patient(db: Session, data: PatientCreate | dict) -> dict:
+    if isinstance(data, dict):
+        try:
+            data = PatientCreate(**data)
+        except ValidationError as e:
+            errors = [f"{err['loc'][0]}: {err['msg']}" for err in e.errors()]
+            return {"error": "; ".join(errors)}
+
     existing = db.query(Patient).filter(Patient.phone == data.phone).first()
     if existing:
-        return {"error": f"Patient with phone {data.phone} already exists", "patient_id": existing.id}
+        return {
+            "already_registered": True,
+            "patient_id": existing.id,
+            "name": existing.name,
+            "phone": existing.phone,
+            "message": f"{existing.name} is already registered. Using existing record.",
+        }
 
     patient = Patient(
         name=data.name,
         phone=data.phone,
         dob=data.dob,
         gender=data.gender,
-        consent_given=True,
+        consent_given=data.consent_given,
     )
     db.add(patient)
     db.commit()
