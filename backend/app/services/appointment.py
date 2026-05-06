@@ -79,17 +79,25 @@ def create_appointment(db: Session, patient_id: int, doctor_id: int, slot_time: 
     }
 
 
-def get_todays_queue(db: Session, doctor_id: int) -> dict:
+def get_todays_queue(db: Session, doctor_id: int, date: str | None = None) -> dict:
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         return {"error": f"Doctor {doctor_id} not found"}
 
-    today = datetime.now().date()
+    if date:
+        try:
+            from datetime import date as date_type
+            queue_date = date_type.fromisoformat(date)
+        except ValueError:
+            return {"error": "Invalid date format. Use YYYY-MM-DD"}
+    else:
+        queue_date = datetime.now().date()
+
     appointments = (
         db.query(Appointment)
         .filter(
             Appointment.doctor_id == doctor_id,
-            func.date(Appointment.slot_time) == today,
+            func.date(Appointment.slot_time) == queue_date,
             Appointment.status != "cancelled",
         )
         .order_by(Appointment.token)
@@ -112,7 +120,7 @@ def get_todays_queue(db: Session, doctor_id: int) -> dict:
 
     return {
         "success": True,
-        "date": str(today),
+        "date": str(queue_date),
         "doctor_name": doctor.name,
         "total": len(queue),
         "queue": queue,

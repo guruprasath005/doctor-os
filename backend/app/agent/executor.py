@@ -69,7 +69,9 @@ def dispatch(tool_name: str, arguments: str, db: Session, context: dict | None =
             doctor_id = _pos_int(args, "doctor_id")
             if doctor_id is None:
                 return {"error": "doctor_id must be a positive integer"}
-            return appointment_service.get_todays_queue(db=db, doctor_id=doctor_id)
+            return appointment_service.get_todays_queue(
+                db=db, doctor_id=doctor_id, date=args.get("date")
+            )
 
         case "get_queue_position":
             appointment_id = _pos_int(args, "appointment_id")

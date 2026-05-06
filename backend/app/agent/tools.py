@@ -98,13 +98,21 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_todays_queue",
-            "description": "Get today's confirmed appointments for a doctor, ordered by token number.",
+            "description": (
+                "Get the appointment queue for a doctor on a given date. "
+                "If no date is provided, defaults to today. "
+                "For 'tomorrow' use tomorrow's date in YYYY-MM-DD format."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "doctor_id": {
                         "type": "integer",
                         "description": "Doctor ID. Use 1 if not specified.",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Date in YYYY-MM-DD format. Omit for today.",
                     },
                 },
                 "required": ["doctor_id"],
