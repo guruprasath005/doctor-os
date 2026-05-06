@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from app.agent import brain
@@ -5,9 +7,12 @@ from app.config import settings
 from app.database import SessionLocal
 from app.services.messenger import send_message
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/webhook", tags=["telegram"])
 
 _conversation_store: dict[str, list[dict]] = {}
+_MAX_HISTORY = 40  # 20 user+assistant pairs
 
 
 @router.post("/telegram")
@@ -30,18 +35,34 @@ def telegram_webhook(
     if not text:
         return {"ok": True}
 
-    if text == "/start":
-        send_message(chat_id, "Welcome to the clinic. How can I help you today?")
+    if text.startswith("/start"):
+        send_message(chat_id, "Welcome to the clinic assistant. How can I help you today?")
         return {"ok": True}
 
-    if text == "/new":
+    if text.startswith("/new"):
         _conversation_store.pop(chat_id, None)
         send_message(chat_id, "Session cleared. How can I help you?")
         return {"ok": True}
 
-    history = _conversation_store.setdefault(chat_id, [])
-    db = SessionLocal()
+    if text.startswith("/help"):
+        send_message(
+            chat_id,
+            "I can help you with:\n"
+            "- Register patients\n"
+            "- Book appointments\n"
+            "- Record clinical notes\n"
+            "- Draft prescriptions\n"
+            "- Check today's queue\n\n"
+            "Type /new to clear the current session.",
+        )
+        return {"ok": True}
 
+    history = _conversation_store.setdefault(chat_id, [])
+
+    if len(history) > _MAX_HISTORY:
+        history[:] = history[-_MAX_HISTORY:]
+
+    db = SessionLocal()
     try:
         reply = brain.run(
             user_message=text,
@@ -50,9 +71,9 @@ def telegram_webhook(
             context={"chat_id": chat_id},
         )
         send_message(chat_id, reply)
-    except Exception as e:
-        send_message(chat_id, "Something went wrong. Please try again.")
-        raise e
+    except Exception:
+        logger.exception("Unhandled error processing Telegram message (chat_id redacted)")
+        send_message(chat_id, "Something went wrong. Please try again or type /new to reset.")
     finally:
         db.close()
 
