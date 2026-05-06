@@ -1,0 +1,24 @@
+[project]
+name = "doctor-os"
+version = "0.1.0"
+description = "Doctor's Agentic OS — Local Phase Week 1"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.30.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+doctor-os = "app.main:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
