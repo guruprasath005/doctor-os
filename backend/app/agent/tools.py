@@ -136,6 +136,29 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "reschedule_appointment",
+            "description": (
+                "Move an existing appointment to a new date and time. "
+                "To find the appointment_id: call get_todays_queue with the current appointment date, "
+                "then pick the appointment_id from the queue. "
+                "Automatically assigns a new token for the new date."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "appointment_id": {"type": "integer", "description": "ID of the appointment to reschedule"},
+                    "new_slot_time": {
+                        "type": "string",
+                        "description": "New date and time in YYYY-MM-DD HH:MM (24-hour) format. Must be future.",
+                    },
+                },
+                "required": ["appointment_id", "new_slot_time"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "cancel_appointment",
             "description": "Cancel a patient's appointment and free the slot.",
             "parameters": {

@@ -171,6 +171,73 @@ def cancel_appointment(db: Session, appointment_id: int) -> dict:
     return {"success": True, "appointment_id": appointment_id, "status": "cancelled"}
 
 
+def reschedule_appointment(db: Session, appointment_id: int, new_slot_time: str) -> dict:
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appointment:
+        return {"error": f"Appointment {appointment_id} not found"}
+
+    if appointment.status == "cancelled":
+        return {"error": "Cannot reschedule a cancelled appointment"}
+
+    try:
+        new_slot_dt = datetime.strptime(new_slot_time, "%Y-%m-%d %H:%M")
+    except ValueError:
+        return {"error": "Invalid slot_time format. Use YYYY-MM-DD HH:MM"}
+
+    if new_slot_dt <= datetime.now():
+        return {"error": "New slot must be a future date and time"}
+
+    patient = db.query(Patient).filter(Patient.id == appointment.patient_id).first()
+    new_date = new_slot_dt.date()
+
+    # Check duplicate on new date (excluding current appointment)
+    existing = (
+        db.query(Appointment)
+        .filter(
+            Appointment.patient_id == appointment.patient_id,
+            Appointment.doctor_id == appointment.doctor_id,
+            func.date(Appointment.slot_time) == new_date,
+            Appointment.status != "cancelled",
+            Appointment.id != appointment_id,
+        )
+        .first()
+    )
+    if existing:
+        return {
+            "already_booked": True,
+            "appointment_id": existing.id,
+            "message": f"{patient.name if patient else 'Patient'} already has an appointment on {new_date}.",
+        }
+
+    # Recalculate token for the new date
+    new_token = (
+        db.query(func.count(Appointment.id))
+        .filter(
+            Appointment.doctor_id == appointment.doctor_id,
+            func.date(Appointment.slot_time) == new_date,
+            Appointment.status != "cancelled",
+            Appointment.id != appointment_id,
+        )
+        .scalar()
+        or 0
+    ) + 1
+
+    old_slot = appointment.slot_time.strftime("%Y-%m-%d %H:%M")
+    appointment.slot_time = new_slot_dt
+    appointment.token = new_token
+    db.commit()
+    db.refresh(appointment)
+
+    return {
+        "success": True,
+        "appointment_id": appointment.id,
+        "patient_name": patient.name if patient else "Unknown",
+        "old_slot": old_slot,
+        "new_slot": new_slot_dt.strftime("%Y-%m-%d %H:%M"),
+        "new_token": new_token,
+    }
+
+
 def get_appointment(db: Session, appointment_id: int) -> dict:
     appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:

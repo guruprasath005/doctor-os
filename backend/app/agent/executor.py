@@ -85,6 +85,17 @@ def dispatch(tool_name: str, arguments: str, db: Session, context: dict | None =
                 return {"error": "appointment_id must be a positive integer"}
             return appointment_service.cancel_appointment(db=db, appointment_id=appointment_id)
 
+        case "reschedule_appointment":
+            appointment_id = _pos_int(args, "appointment_id")
+            new_slot_time = str(args.get("new_slot_time", "")).strip()
+            if appointment_id is None:
+                return {"error": "appointment_id must be a positive integer"}
+            if not new_slot_time:
+                return {"error": "new_slot_time is required (YYYY-MM-DD HH:MM)"}
+            return appointment_service.reschedule_appointment(
+                db=db, appointment_id=appointment_id, new_slot_time=new_slot_time
+            )
+
         # ── EMR ───────────────────────────────────────────────────────────────
         case "create_visit":
             patient_id = _pos_int(args, "patient_id")
